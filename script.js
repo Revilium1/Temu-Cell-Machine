@@ -870,4 +870,30 @@ document.getElementById("loadFile")
     });
 
 
+
+function loadCellImages(types, callback) {
+    let loaded = 0;
+    const total = Object.keys(types).length;
+
+    for (const type of Object.keys(types)) {
+        const img = new Image();
+        img.src = `images/${type}.png`;
+        img.onload = () => {
+            loaded++;
+            if (loaded === total) callback();
+        };
+        img.onerror = () => {
+            console.warn(`Image not found for cell type: ${type}`);
+            loaded++;
+            if (loaded === total) callback();
+        };
+        CellImages[type] = img;
+    }
+}
+
+// Load all images before rendering
+loadCellImages(CellTypes, () => {
+    renderer.render();
+});
+
 renderer.render();
