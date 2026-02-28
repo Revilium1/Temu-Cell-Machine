@@ -5,6 +5,7 @@
 const WIDTH = 25;
 const HEIGHT = 18;
 const SIZE = 32;
+const CellImages = {};
 
 let TICK_RATE = 10;
 let interval = null;
