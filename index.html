@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Temu Cell Machine</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="toolbar">
+    <button onclick="start()">Play</button>
+    <button onclick="stop()">Pause</button>
+    <button onclick="step()">Step</button>
+    <button onclick="clearGrid()">Clear</button>
+    Speed:
+    <input type="range" min="1" max="60" value="10" onchange="setSpeed(this.value)">
+    <input type="file" id="loadFile" accept=".json" style="display:none" />
+    <button onclick="saveToFile()">Save</button>
+    <button onclick="document.getElementById('loadFile').click()">Load</button>
+</div>
+
+<canvas id="grid"></canvas>
+
+<div id="palette">
+    <button onclick="selectedType='pusher'">Pusher</button>
+    <button onclick="selectedType='block'">Block</button>
+    <button onclick="selectedType='generator'">Generator</button>
+    <button onclick="selectedType='rotater-cw'">Rotater CW</button>
+    <button onclick="selectedType='rotater-ccw'">Rotater CCW</button>
+    <button onclick="selectedType='slider'">Slider</button>
+    <button onclick="selectedType='wall'">Wall</button>
+    <button onclick="selectedType='trash'">Trash</button>
+    <button onclick="selectedType='puller'">Puller</button>
+    <button onclick="selectedType='trash-pusher'">Trash Pusher</button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
