@@ -896,4 +896,34 @@ loadCellImages(CellTypes, () => {
     renderer.render();
 });
 
+
+function resizeGrid(newWidth, newHeight) {
+    stop(); // Stop simulation
+
+    const oldGrid = engine.grid;
+    engine.width = newWidth;
+    engine.height = newHeight;
+
+    // Create new grid
+    const newGrid = Array.from({ length: newHeight }, (_, y) =>
+        Array.from({ length: newWidth }, (_, x) =>
+            oldGrid[y] && oldGrid[y][x] ? structuredClone(oldGrid[y][x]) : null
+        )
+    );
+
+    engine.grid = newGrid;
+
+    // Resize canvas
+    canvas.width = newWidth * SIZE;
+    canvas.height = newHeight * SIZE;
+
+    renderer.render();
+}
+
+document.getElementById("resizeGrid").addEventListener("click", () => {
+    const w = Number(document.getElementById("gridWidth").value);
+    const h = Number(document.getElementById("gridHeight").value);
+    if (w > 0 && h > 0) resizeGrid(w, h);
+});
+
 renderer.render();
