@@ -5,7 +5,6 @@
 const WIDTH = 25;
 const HEIGHT = 18;
 const SIZE = 32;
-const CellImages = {};
 
 let TICK_RATE = 10;
 let interval = null;
@@ -54,11 +53,11 @@ const CellTypes = {
     },
 
     block: {
-        color: "#00ccff"
+        color: "#ff0"
     },
 
     pusher: {
-        color: "#ffcc00"
+        color: "#00a"
     },
 
     generator: {
@@ -66,11 +65,11 @@ const CellTypes = {
     },
 
     "rotater-cw": {
-        color: "#aa00ff"
+        color: "#ff8800"
     },
 
     "rotater-ccw": {
-        color: "#ff00aa"
+        color: "#0088ff"
     },
 
     slider: {
@@ -82,17 +81,23 @@ const CellTypes = {
         }
     },
     trash: {
-    color: "#ff0000",
+    color: "#ff00ff",
     canEnter(dx, dy, cell) {
         // Trash blocks movement into it, but destroys the incoming cell
         return true; // allow movement so we can destroy the moving cell in applyMoves
     }
 },
 puller: {
-    color: "#ff8800"
+    color: "#a0a"
 },
 "trash-pusher": {
     color: "#ff4444"
+},
+enemy: {
+    color: "#aa0000",
+    canEnter(dx, dy, cell) {
+        return true; // allow movement into it
+    }
 },
 };
 
@@ -118,7 +123,7 @@ const MovementSystem = {
         if (cell.type === "wall") return null;
 
         // Trash is VALID endpoint (movement allowed INTO it)
-        if (cell.type === "trash") {
+        if (cell.type === "trash" || cell.type === "enemy") {
             return []; // Stop chain here, allow movement
         }
 
@@ -141,23 +146,31 @@ const MovementSystem = {
 
     applyMoves(engine, moves) {
 
-        // Important: move deepest first
+    for (const move of moves) {
 
-        for (const move of moves) {
+        const movingCell = engine.grid[move.from.y][move.from.x];
+        const targetCell = engine.grid[move.to.y][move.to.x];
 
-            const movingCell = engine.grid[move.from.y][move.from.x];
-            const targetCell = engine.grid[move.to.y][move.to.x];
+        if (!movingCell) continue;
 
-            // If target is trash → destroy moving cell
-            if (targetCell && targetCell.type === "trash") {
-                engine.grid[move.from.y][move.from.x] = null;
-                continue;
-            }
-
-            engine.grid[move.to.y][move.to.x] = movingCell;
+        // Trash → destroy mover only
+        if (targetCell && targetCell.type === "trash") {
             engine.grid[move.from.y][move.from.x] = null;
+            continue;
         }
+
+        // Enemy → destroy BOTH
+        if (targetCell && targetCell.type === "enemy") {
+            engine.grid[move.from.y][move.from.x] = null;
+            engine.grid[move.to.y][move.to.x] = null;
+            continue;
+        }
+
+        // Normal movement
+        engine.grid[move.to.y][move.to.x] = movingCell;
+        engine.grid[move.from.y][move.from.x] = null;
     }
+}
 };
 
 /* ================================
@@ -733,6 +746,8 @@ function placeCell(x, y) {
     engine.grid[y][x] = { type: "puller", dir: { x: 1, y: 0 } };
     if (selectedType === "trash-pusher")
     engine.grid[y][x] = { type: "trash-pusher", dir: { x: 1, y: 0 } };
+    if (selectedType === "enemy")
+    engine.grid[y][x] = { type: "enemy" };
 }
 
 /* ================================
@@ -853,30 +868,5 @@ document.getElementById("loadFile")
         reader.readAsText(file);
     });
 
-
-function loadCellImages(types, callback) {
-    let loaded = 0;
-    const total = Object.keys(types).length;
-
-    for (const type of Object.keys(types)) {
-        const img = new Image();
-        img.src = `images/${type}.png`;
-        img.onload = () => {
-            loaded++;
-            if (loaded === total) callback();
-        };
-        img.onerror = () => {
-            console.warn(`Image not found for cell type: ${type}`);
-            loaded++;
-            if (loaded === total) callback();
-        };
-        CellImages[type] = img;
-    }
-}
-
-// Load all images before rendering
-loadCellImages(CellTypes, () => {
-    renderer.render();
-});
 
 renderer.render();
