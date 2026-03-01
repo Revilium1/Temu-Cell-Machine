@@ -109,11 +109,15 @@ const CellTypes = {
     },
     "one-directional": {
         color: "#ffaa00",
-        canEnter(dx, dy, cell) {
-            // only allow entry from the allowed side
-            // for example, allow entry only if dx === 1 (push from left)
-            return dx === 1 && dy === 0;
-        }
+        "one-directional": {
+    color: "#ffaa00",
+    canEnter(dx, dy, cell) {
+        if (!cell.dir) return false;
+
+        // Allow entry only from the opposite of its facing direction
+        return dx === -cell.dir.x && dy === -cell.dir.y;
+    }
+},
     },
 };
 
