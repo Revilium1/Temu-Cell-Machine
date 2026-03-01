@@ -6,12 +6,14 @@ const WIDTH = 25;
 const HEIGHT = 18;
 const SIZE = 32;
 const CellImages = {};
+const MAX_HISTORY = 100;
 
 let TICK_RATE = 10;
 let interval = null;
 let selectedType = "pusher";
 let hoveredCell = null;
-
+let undoStack = [];
+let redoStack = [];
 /* ================================
    ENGINE
 ================================ */
@@ -690,33 +692,55 @@ function drawSliderMark(x, y, axis) {
 /* ================================
    INPUT
 ================================ */
+let isMouseDown = false;
+
+canvas.addEventListener("mousedown", e => {
+    if (isRunning) return;
+
+    isMouseDown = true;
+
+    if (e.button === 0) {  // left click
+        pushUndoState(); // snapshot BEFORE drag
+    }
+
+    handlePaint(e);
+});
 
 canvas.addEventListener("mousemove", e => {
+    updateHover(e);
+    if (isMouseDown && !isRunning) handlePaint(e); // don't push state here
+    renderer.render();
+});
+
+canvas.addEventListener("mouseup", () => isMouseDown = false);
+canvas.addEventListener("mouseleave", () => isMouseDown = false);
+
+function updateHover(e) {
     const rect = canvas.getBoundingClientRect();
     const x = Math.floor((e.clientX - rect.left) / SIZE);
     const y = Math.floor((e.clientY - rect.top) / SIZE);
 
     hoveredCell =
-        (x >= 0 && y >= 0 && x < WIDTH && y < HEIGHT)
+        (x >= 0 && y >= 0 && x < engine.width && y < engine.height)
             ? { x, y }
             : null;
+}
 
-    renderer.render();
-});
-
-canvas.addEventListener("mousedown", e => {
+function handlePaint(e) {
     const rect = canvas.getBoundingClientRect();
     const x = Math.floor((e.clientX - rect.left) / SIZE);
     const y = Math.floor((e.clientY - rect.top) / SIZE);
 
-    if (e.button === 2)
-        engine.grid[y][x] = null;
-    else
+    if (!engine.inBounds(x, y)) return;
+
+    if (e.buttons === 2) { // right click
+        if (engine.grid[y][x]) engine.grid[y][x] = null;
+    } else {
         placeCell(x, y);
+    }
 
     renderer.render();
-});
-
+}
 canvas.addEventListener("contextmenu", e => e.preventDefault());
 
 function placeCell(x, y) {
@@ -750,13 +774,64 @@ function placeCell(x, y) {
     if (selectedType === "enemy")
     engine.grid[y][x] = { type: "enemy" };
 }
+function snapshot() {
+    return JSON.stringify(engine.grid);
+}
+
+function restore(snapshotData) {
+    const data = JSON.parse(snapshotData);
+
+    engine.grid = engine.createGrid();
+
+    for (let y = 0; y < Math.min(engine.height, data.length); y++) {
+        for (let x = 0; x < Math.min(engine.width, data[y].length); x++) {
+            engine.grid[y][x] = data[y][x] ? structuredClone(data[y][x]) : null;
+        }
+    }
+
+    renderer.render();
+}
+
+function pushUndoState(force = false) {
+    if (isRunning && !force) return;  // ❌ don't record during simulation
+
+    const current = snapshot();
+
+    if (undoStack.length > 0 && undoStack[undoStack.length - 1] === current) return;
+
+    undoStack.push(current);
+
+    if (undoStack.length > MAX_HISTORY) undoStack.shift();
+
+    redoStack.length = 0;
+}
+
+function undo() {
+    if (undoStack.length <= 1) return; // need at least 2 states
+
+    redoStack.push(undoStack.pop());
+
+    const previous = undoStack[undoStack.length - 1];
+    restore(previous);
+}
+
+function redo() {
+    if (redoStack.length === 0) return;
+
+    const state = redoStack.pop();
+    undoStack.push(state);
+    restore(state);
+}
 
 /* ================================
    LOOP CONTROL
 ================================ */
 
+let isRunning = false;
+
 function start() {
     if (interval) return;
+    isRunning = true;
     interval = setInterval(() => {
         engine.tick();
         renderer.render();
@@ -766,6 +841,7 @@ function start() {
 function stop() {
     clearInterval(interval);
     interval = null;
+    isRunning = false;
 }
 
 function setSpeed(val) {
@@ -826,7 +902,8 @@ function saveToFile() {
 }
 
 function clearGrid() {
-    stop(); // optional: stop simulation when clearing
+    pushUndoState(true); // force snapshot
+    stop();
     engine.grid = engine.createGrid();
     renderer.render();
 }
@@ -855,6 +932,18 @@ document.addEventListener("keydown", e => {
     renderer.render();
 });
 
+document.addEventListener("keydown", e => {
+    if (e.ctrlKey && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        undo();
+    }
+
+    if (e.ctrlKey && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        redo();
+    }
+});
+
 document.getElementById("loadFile")
   .addEventListener("change", function () {
         const file = this.files[0];
@@ -870,6 +959,41 @@ document.getElementById("loadFile")
     });
 
 
+function buildPalette() {
+    const palette = document.getElementById("palette");
+    palette.innerHTML = "";
+
+    for (const type of Object.keys(CellTypes)) {
+
+        const btn = document.createElement("button");
+        btn.className = "palette-btn";
+        btn.title = type; // hover name
+
+        btn.onclick = () => {
+            selectedType = type;
+            document.querySelectorAll(".palette-btn")
+                .forEach(b => b.classList.remove("selected"));
+            btn.classList.add("selected");
+        };
+
+        const img = CellImages[type];
+
+        if (img && img.complete && img.naturalWidth > 0) {
+            const preview = document.createElement("img");
+            preview.src = img.src;
+            preview.draggable = false;
+            btn.appendChild(preview);
+        } else {
+            // fallback flat color preview
+            const swatch = document.createElement("div");
+            swatch.style.background = CellTypes[type].color || "#fff";
+            swatch.className = "swatch";
+            btn.appendChild(swatch);
+        }
+
+        palette.appendChild(btn);
+    }
+}
 
 function loadCellImages(types, callback) {
     let loaded = 0;
@@ -896,9 +1020,11 @@ loadCellImages(CellTypes, () => {
     renderer.render();
 });
 
+buildPalette();
 
 function resizeGrid(newWidth, newHeight) {
-    stop(); // Stop simulation
+    pushUndoState(true); // force snapshot
+    stop();
 
     const oldGrid = engine.grid;
     engine.width = newWidth;
@@ -927,3 +1053,4 @@ document.getElementById("resizeGrid").addEventListener("click", () => {
 });
 
 renderer.render();
+pushUndoState();
