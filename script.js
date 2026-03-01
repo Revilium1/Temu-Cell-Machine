@@ -998,7 +998,7 @@ function placeCell(x, y) {
         };
     if (selectedType === "one-directional")
         engine.grid[y][x] = {
-            type: "one-directional"
+            type: "one-directional",
             dir: {
                 x: 1,
                 y: 0
