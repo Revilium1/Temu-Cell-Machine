@@ -728,6 +728,8 @@ class Renderer {
 
                 const img = CellImages[cell.type];
 
+                                const img = CellImages[cell.type];
+
                 if (img) {
                     // Center coordinates for rotation
                     const cx = x * size + size / 2;
@@ -748,14 +750,15 @@ class Renderer {
                     const def = CellTypes[cell.type];
                     ctx.fillStyle = def?.color || "#fff";
                     ctx.fillRect(x * size, y * size, size, size);
-                }
 
-                if (cell.dir) {
-                    drawArrow(x, y, cell.dir);
-                }
-                // Slider mark overlay
+                    if (cell.dir) {
+                        drawArrow(x, y, cell.dir);
+                    }
+                                   // Slider mark overlay
                 if (cell.type === "slider")
                     drawSliderMark(x, y, cell.axis);
+                }
+
             }
         }
 
