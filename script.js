@@ -728,8 +728,6 @@ class Renderer {
 
                 const img = CellImages[cell.type];
 
-                                const img = CellImages[cell.type];
-
                 if (img) {
                     // Center coordinates for rotation
                     const cx = x * size + size / 2;
