@@ -1275,6 +1275,7 @@ function loadCellImages(types, callback) {
 // Load all images before rendering
 loadCellImages(CellTypes, () => {
     renderer.render();
+   buildPalette();
 });
 
 buildPalette();
