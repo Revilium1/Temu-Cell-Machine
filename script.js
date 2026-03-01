@@ -965,10 +965,9 @@ function buildPalette() {
     palette.innerHTML = "";
 
     for (const type of Object.keys(CellTypes)) {
-
         const btn = document.createElement("button");
         btn.className = "palette-btn";
-        btn.title = type; // hover name
+        btn.title = type;
 
         btn.onclick = () => {
             selectedType = type;
@@ -977,20 +976,24 @@ function buildPalette() {
             btn.classList.add("selected");
         };
 
-        const img = CellImages[type];
+        // Create image element
+        const img = new Image();
+        img.src = `images/${type}.png`;
+        img.draggable = false;
+        img.className = "palette-img";
 
-        if (img && img.complete && img.naturalWidth > 0) {
-            const preview = document.createElement("img");
-            preview.src = img.src;
-            preview.draggable = false;
-            btn.appendChild(preview);
-        } else {
-            // fallback flat color preview
+        // Fallback to color swatch if image fails
+        img.onerror = () => {
             const swatch = document.createElement("div");
-            swatch.style.background = CellTypes[type].color || "#fff";
             swatch.className = "swatch";
+            swatch.style.background = CellTypes[type].color || "#fff";
             btn.appendChild(swatch);
-        }
+        };
+
+        // If image loads successfully, add it
+        img.onload = () => {
+            btn.appendChild(img);
+        };
 
         palette.appendChild(btn);
     }
