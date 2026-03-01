@@ -10,7 +10,7 @@ const MAX_HISTORY = 100;
 
 let TICK_RATE = 10;
 let interval = null;
-let selectedType = "push";
+let selectedType = "mover";
 let hoveredCell = null;
 let undoStack = [];
 let redoStack = [];
@@ -63,7 +63,7 @@ const CellTypes = {
         color: "#ff0"
     },
 
-    push: {
+    mover: {
         color: "#00a"
     },
 
@@ -98,7 +98,7 @@ const CellTypes = {
     puller: {
         color: "#a0a"
     },
-    "trash-pusher": {
+    "trash-mover": {
         color: "#ff4444"
     },
     enemy: {
@@ -338,13 +338,13 @@ const PusherSystem = {
         const allMoves = [];
         const occupied = new Set();
 
-        // Mark pushers temporarily disabled if forces equal
+        // Mark movers temporarily disabled if forces equal
         for (let y = 0; y < engine.height; y++) {
             let x = 0;
             while (x < engine.width) {
-                // Skip empty/non-pusher
+                // Skip empty/non-mover
                 const cell = engine.grid[y][x];
-                if (!cell || cell.type !== "push" || cell.dir.x !== 1) {
+                if (!cell || cell.type !== "mover" || cell.dir.x !== 1) {
                     x++;
                     continue;
                 }
@@ -354,7 +354,7 @@ const PusherSystem = {
                 let lx = x;
                 while (engine.inBounds(lx, y)) {
                     const c = engine.grid[y][lx];
-                    if (!c || c.type !== "push" || c.dir.x !== 1) break;
+                    if (!c || c.type !== "mover" || c.dir.x !== 1) break;
                     leftChain.push({
                         x: lx,
                         y
@@ -368,7 +368,7 @@ const PusherSystem = {
                     x = lx;
                     continue;
                 }
-                if (!engine.grid[y][rx] || engine.grid[y][rx].type !== "push" || engine.grid[y][rx].dir.x !== -1) {
+                if (!engine.grid[y][rx] || engine.grid[y][rx].type !== "mover" || engine.grid[y][rx].dir.x !== -1) {
                     x = lx;
                     continue;
                 }
@@ -377,7 +377,7 @@ const PusherSystem = {
                 let rxi = rx;
                 while (engine.inBounds(rxi, y)) {
                     const c = engine.grid[y][rxi];
-                    if (!c || c.type !== "push" || c.dir.x !== -1) break;
+                    if (!c || c.type !== "mover" || c.dir.x !== -1) break;
                     rightChain.push({
                         x: rxi,
                         y
@@ -395,7 +395,7 @@ const PusherSystem = {
                     continue;
                 } // only handle 1-space tie
 
-                // Equal force? disable pushers
+                // Equal force? disable movers
                 if (leftChain.length === rightChain.length) {
                     leftChain.forEach(c => engine.grid[c.y][c.x].disabledThisTick = true);
                     rightChain.forEach(c => engine.grid[c.y][c.x].disabledThisTick = true);
@@ -411,7 +411,7 @@ const PusherSystem = {
             let y = 0;
             while (y < engine.height) {
                 const cell = engine.grid[y][x];
-                if (!cell || cell.type !== "push" || cell.dir.y !== 1) {
+                if (!cell || cell.type !== "mover" || cell.dir.y !== 1) {
                     y++;
                     continue;
                 }
@@ -421,7 +421,7 @@ const PusherSystem = {
                 let ty = y;
                 while (engine.inBounds(x, ty)) {
                     const c = engine.grid[ty][x];
-                    if (!c || c.type !== "push" || c.dir.y !== 1) break;
+                    if (!c || c.type !== "mover" || c.dir.y !== 1) break;
                     topChain.push({
                         x,
                         y: ty
@@ -435,7 +435,7 @@ const PusherSystem = {
                     y = ty;
                     continue;
                 }
-                if (!engine.grid[by][x] || engine.grid[by][x].type !== "push" || engine.grid[by][x].dir.y !== -1) {
+                if (!engine.grid[by][x] || engine.grid[by][x].type !== "mover" || engine.grid[by][x].dir.y !== -1) {
                     y = ty;
                     continue;
                 }
@@ -444,7 +444,7 @@ const PusherSystem = {
                 let byi = by;
                 while (engine.inBounds(x, byi)) {
                     const c = engine.grid[byi][x];
-                    if (!c || c.type !== "push" || c.dir.y !== -1) break;
+                    if (!c || c.type !== "mover" || c.dir.y !== -1) break;
                     bottomChain.push({
                         x,
                         y: byi
@@ -475,7 +475,7 @@ const PusherSystem = {
         for (let y = 0; y < engine.height; y++) {
             for (let x = 0; x < engine.width; x++) {
                 const cell = engine.grid[y][x];
-                if (!cell || cell.type !== "push" || cell.disabledThisTick) continue;
+                if (!cell || cell.type !== "mover" || cell.disabledThisTick) continue;
 
                 const moves = MovementSystem.resolveChain(
                     engine,
@@ -595,7 +595,7 @@ const TrashPusherSystem = {
             for (let x = 0; x < engine.width; x++) {
 
                 const cell = engine.grid[y][x];
-                if (!cell || cell.type !== "trash-pusher") continue;
+                if (!cell || cell.type !== "trash-mover") continue;
 
                 const {
                     x: dx,
@@ -614,7 +614,7 @@ const TrashPusherSystem = {
                     continue;
 
                 // Trash takes priority → just move into it
-                // applyMoves will delete the trash-pusher
+                // applyMoves will delete the trash-mover
                 if (front && front.type === "trash") {
                     moves.push({
                         from: {
@@ -752,9 +752,9 @@ class Renderer {
                     if (cell.dir) {
                         drawArrow(x, y, cell.dir);
                     }
-                                   // slide mark overlay
+                                   // Slider mark overlay
                 if (cell.type === "slide")
-                    drawSlideMark(x, y, cell.axis);
+                    drawSliderMark(x, y, cell.axis);
                 }
 
             }
@@ -853,7 +853,7 @@ function drawPaletteArrow(ctx, cx, cy, s, dir) {
 }
 
 
-function drawSlideMark(x, y, axis) {
+function drawSliderMark(x, y, axis) {
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -929,9 +929,9 @@ canvas.addEventListener("contextmenu", e => e.preventDefault());
 
 function placeCell(x, y) {
 
-    if (selectedType === "push")
+    if (selectedType === "mover")
         engine.grid[y][x] = {
-            type: "push",
+            type: "mover",
             dir: {
                 x: 1,
                 y: 0
@@ -984,9 +984,9 @@ function placeCell(x, y) {
                 y: 0
             }
         };
-    if (selectedType === "trash-pusher")
+    if (selectedType === "trash-mover")
         engine.grid[y][x] = {
-            type: "trash-pusher",
+            type: "trash-mover",
             dir: {
                 x: 1,
                 y: 0
@@ -1225,7 +1225,7 @@ function buildPalette() {
 
             // Draw arrow overlay on swatch if this type uses direction
             const dirTypes = new Set([
-                "push", "generator", "rotater-cw", "rotater-ccw", "puller", "trash-pusher", "one-directional"
+                "mover", "generator", "rotater-cw", "rotater-ccw", "puller", "trash-mover", "one-directional"
             ]);
 
             if (dirTypes.has(type)) {
