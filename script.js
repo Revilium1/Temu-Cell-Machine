@@ -26,8 +26,12 @@ class Engine {
     }
 
     createGrid() {
-        return Array.from({ length: this.height }, () =>
-            Array.from({ length: this.width }, () => null)
+        return Array.from({
+                length: this.height
+            }, () =>
+            Array.from({
+                length: this.width
+            }, () => null)
         );
     }
 
@@ -84,24 +88,33 @@ const CellTypes = {
         }
     },
     trash: {
-    color: "#ff00ff",
-    canEnter(dx, dy, cell) {
-        // Trash blocks movement into it, but destroys the incoming cell
-        return true; // allow movement so we can destroy the moving cell in applyMoves
-    }
-},
-puller: {
-    color: "#a0a"
-},
-"trash-pusher": {
-    color: "#ff4444"
-},
-enemy: {
-    color: "#aa0000",
-    canEnter(dx, dy, cell) {
-        return true; // allow movement into it
-    }
-},
+        color: "#ff00ff",
+        canEnter(dx, dy, cell) {
+            // Trash blocks movement into it, but destroys the incoming cell
+            return true; // allow movement so we can destroy the moving cell in applyMoves
+        }
+
+    },
+    puller: {
+        color: "#a0a"
+    },
+    "trash-pusher": {
+        color: "#ff4444"
+    },
+    enemy: {
+        color: "#aa0000",
+        canEnter(dx, dy, cell) {
+            return true; // allow movement into it
+        }
+    },
+    "half-slider": {
+        color: "#ffaa00",
+        canEnter(dx, dy, cell) {
+            // only allow entry from the allowed side
+            // for example, allow entry only if dx === 1 (push from left)
+            return dx === 1 && dy === 0;
+        }
+    },
 };
 
 /* ================================
@@ -143,37 +156,46 @@ const MovementSystem = {
 
         return [
             ...next,
-            { from: { x, y }, to: { x: nx, y: ny } }
+            {
+                from: {
+                    x,
+                    y
+                },
+                to: {
+                    x: nx,
+                    y: ny
+                }
+            }
         ];
     },
 
     applyMoves(engine, moves) {
 
-    for (const move of moves) {
+        for (const move of moves) {
 
-        const movingCell = engine.grid[move.from.y][move.from.x];
-        const targetCell = engine.grid[move.to.y][move.to.x];
+            const movingCell = engine.grid[move.from.y][move.from.x];
+            const targetCell = engine.grid[move.to.y][move.to.x];
 
-        if (!movingCell) continue;
+            if (!movingCell) continue;
 
-        // Trash → destroy mover only
-        if (targetCell && targetCell.type === "trash") {
+            // Trash → destroy mover only
+            if (targetCell && targetCell.type === "trash") {
+                engine.grid[move.from.y][move.from.x] = null;
+                continue;
+            }
+
+            // Enemy → destroy BOTH
+            if (targetCell && targetCell.type === "enemy") {
+                engine.grid[move.from.y][move.from.x] = null;
+                engine.grid[move.to.y][move.to.x] = null;
+                continue;
+            }
+
+            // Normal movement
+            engine.grid[move.to.y][move.to.x] = movingCell;
             engine.grid[move.from.y][move.from.x] = null;
-            continue;
         }
-
-        // Enemy → destroy BOTH
-        if (targetCell && targetCell.type === "enemy") {
-            engine.grid[move.from.y][move.from.x] = null;
-            engine.grid[move.to.y][move.to.x] = null;
-            continue;
-        }
-
-        // Normal movement
-        engine.grid[move.to.y][move.to.x] = movingCell;
-        engine.grid[move.from.y][move.from.x] = null;
     }
-}
 };
 
 /* ================================
@@ -194,11 +216,22 @@ const RotaterSystem = {
                 const isCCW = cell.type === "rotater-ccw";
                 if (!isCW && !isCCW) continue;
 
-                const neighbors = [
-                    { x, y: y - 1 },
-                    { x, y: y + 1 },
-                    { x: x - 1, y },
-                    { x: x + 1, y }
+                const neighbors = [{
+                        x,
+                        y: y - 1
+                    },
+                    {
+                        x,
+                        y: y + 1
+                    },
+                    {
+                        x: x - 1,
+                        y
+                    },
+                    {
+                        x: x + 1,
+                        y
+                    }
                 ];
 
                 for (const n of neighbors) {
@@ -206,7 +239,7 @@ const RotaterSystem = {
                     const target = engine.grid[n.y][n.x];
                     if (!target) continue;
                     if (target.type === "trash") continue; // Add this line to skip trash cells
-if (!target.dir && target.type !== "slider") continue;
+                    if (!target.dir && target.type !== "slider") continue;
 
                     rotations.push({
                         cell: target,
@@ -235,7 +268,10 @@ const GeneratorSystem = {
                 const cell = engine.grid[y][x];
                 if (!cell || cell.type !== "generator" || !cell.dir) continue;
 
-                const { x: dx, y: dy } = cell.dir;
+                const {
+                    x: dx,
+                    y: dy
+                } = cell.dir;
 
                 const bx = x - dx;
                 const by = y - dy;
@@ -251,8 +287,10 @@ const GeneratorSystem = {
                 const moves = MovementSystem.resolveChain(
                     engine,
                     fx,
-                    fy,
-                    { x: dx, y: dy },
+                    fy, {
+                        x: dx,
+                        y: dy
+                    },
                     new Set()
                 );
 
@@ -272,14 +310,23 @@ const GeneratorSystem = {
                         occupied.add(m.to.x + "," + m.to.y)
                     );
                     allMoves.push(...moves);
-                    spawns.push({ fx, fy, behind });
+                    spawns.push({
+                        fx,
+                        fy,
+                        behind
+                    });
                 }
             }
         }
 
         MovementSystem.applyMoves(engine, allMoves);
 
-        for (const { fx, fy, behind } of spawns) {
+        for (const {
+                fx,
+                fy,
+                behind
+            }
+            of spawns) {
             engine.grid[fy][fx] = structuredClone(behind);
         }
     }
@@ -297,7 +344,10 @@ const PusherSystem = {
             while (x < engine.width) {
                 // Skip empty/non-pusher
                 const cell = engine.grid[y][x];
-                if (!cell || cell.type !== "pusher" || cell.dir.x !== 1) { x++; continue; }
+                if (!cell || cell.type !== "pusher" || cell.dir.x !== 1) {
+                    x++;
+                    continue;
+                }
 
                 // Build left chain
                 const leftChain = [];
@@ -305,21 +355,33 @@ const PusherSystem = {
                 while (engine.inBounds(lx, y)) {
                     const c = engine.grid[y][lx];
                     if (!c || c.type !== "pusher" || c.dir.x !== 1) break;
-                    leftChain.push({x: lx, y});
+                    leftChain.push({
+                        x: lx,
+                        y
+                    });
                     lx++;
                 }
 
                 // Build right chain from opposite direction
                 let rx = lx;
-                if (!engine.inBounds(rx, y)) { x = lx; continue; }
-                if (!engine.grid[y][rx] || engine.grid[y][rx].type !== "pusher" || engine.grid[y][rx].dir.x !== -1) { x = lx; continue; }
+                if (!engine.inBounds(rx, y)) {
+                    x = lx;
+                    continue;
+                }
+                if (!engine.grid[y][rx] || engine.grid[y][rx].type !== "pusher" || engine.grid[y][rx].dir.x !== -1) {
+                    x = lx;
+                    continue;
+                }
 
                 const rightChain = [];
                 let rxi = rx;
                 while (engine.inBounds(rxi, y)) {
                     const c = engine.grid[y][rxi];
                     if (!c || c.type !== "pusher" || c.dir.x !== -1) break;
-                    rightChain.push({x: rxi, y});
+                    rightChain.push({
+                        x: rxi,
+                        y
+                    });
                     rxi++;
                 }
 
@@ -328,7 +390,10 @@ const PusherSystem = {
                 const gapEnd = rightChain[0].x - 1;
                 const gapSize = gapEnd - gapStart + 1;
 
-                if (gapSize < 0) { x = rxi; continue; } // only handle 1-space tie
+                if (gapSize < 0) {
+                    x = rxi;
+                    continue;
+                } // only handle 1-space tie
 
                 // Equal force? disable pushers
                 if (leftChain.length === rightChain.length) {
@@ -346,7 +411,10 @@ const PusherSystem = {
             let y = 0;
             while (y < engine.height) {
                 const cell = engine.grid[y][x];
-                if (!cell || cell.type !== "pusher" || cell.dir.y !== 1) { y++; continue; }
+                if (!cell || cell.type !== "pusher" || cell.dir.y !== 1) {
+                    y++;
+                    continue;
+                }
 
                 // Build top chain
                 const topChain = [];
@@ -354,21 +422,33 @@ const PusherSystem = {
                 while (engine.inBounds(x, ty)) {
                     const c = engine.grid[ty][x];
                     if (!c || c.type !== "pusher" || c.dir.y !== 1) break;
-                    topChain.push({x, y: ty});
+                    topChain.push({
+                        x,
+                        y: ty
+                    });
                     ty++;
                 }
 
                 // Build bottom chain
                 let by = ty;
-                if (!engine.inBounds(x, by)) { y = ty; continue; }
-                if (!engine.grid[by][x] || engine.grid[by][x].type !== "pusher" || engine.grid[by][x].dir.y !== -1) { y = ty; continue; }
+                if (!engine.inBounds(x, by)) {
+                    y = ty;
+                    continue;
+                }
+                if (!engine.grid[by][x] || engine.grid[by][x].type !== "pusher" || engine.grid[by][x].dir.y !== -1) {
+                    y = ty;
+                    continue;
+                }
 
                 const bottomChain = [];
                 let byi = by;
                 while (engine.inBounds(x, byi)) {
                     const c = engine.grid[byi][x];
                     if (!c || c.type !== "pusher" || c.dir.y !== -1) break;
-                    bottomChain.push({x, y: byi});
+                    bottomChain.push({
+                        x,
+                        y: byi
+                    });
                     byi++;
                 }
 
@@ -377,7 +457,10 @@ const PusherSystem = {
                 const gapEnd = bottomChain[0].y - 1;
                 const gapSize = gapEnd - gapStart + 1;
 
-                if (gapSize < 0) { y = byi; continue; }
+                if (gapSize < 0) {
+                    y = byi;
+                    continue;
+                }
 
                 if (topChain.length === bottomChain.length) {
                     topChain.forEach(c => engine.grid[c.y][c.x].disabledThisTick = true);
@@ -407,7 +490,10 @@ const PusherSystem = {
                 let conflict = false;
                 for (const move of moves) {
                     const key = move.to.x + "," + move.to.y;
-                    if (occupied.has(key)) { conflict = true; break; }
+                    if (occupied.has(key)) {
+                        conflict = true;
+                        break;
+                    }
                 }
 
                 if (!conflict) {
@@ -441,7 +527,10 @@ const PullerSystem = {
                 const cell = engine.grid[y][x];
                 if (!cell || cell.type !== "puller") continue;
 
-                const { x: dx, y: dy } = cell.dir;
+                const {
+                    x: dx,
+                    y: dy
+                } = cell.dir;
 
                 const fx = x + dx;
                 const fy = y + dy;
@@ -459,8 +548,14 @@ const PullerSystem = {
 
                 // Move puller forward
                 moves.push({
-                    from: { x: oldX, y: oldY },
-                    to: { x: fx, y: fy }
+                    from: {
+                        x: oldX,
+                        y: oldY
+                    },
+                    to: {
+                        x: fx,
+                        y: fy
+                    }
                 });
 
                 // If something is behind, pull it
@@ -472,8 +567,14 @@ const PullerSystem = {
 
                     if (behindCell) {
                         moves.push({
-                            from: { x: bx, y: by },
-                            to: { x: oldX, y: oldY }
+                            from: {
+                                x: bx,
+                                y: by
+                            },
+                            to: {
+                                x: oldX,
+                                y: oldY
+                            }
                         });
                     }
                 }
@@ -496,7 +597,10 @@ const TrashPusherSystem = {
                 const cell = engine.grid[y][x];
                 if (!cell || cell.type !== "trash-pusher") continue;
 
-                const { x: dx, y: dy } = cell.dir;
+                const {
+                    x: dx,
+                    y: dy
+                } = cell.dir;
 
                 const fx = x + dx;
                 const fy = y + dy;
@@ -513,21 +617,36 @@ const TrashPusherSystem = {
                 // applyMoves will delete the trash-pusher
                 if (front && front.type === "trash") {
                     moves.push({
-                        from: { x, y },
-                        to: { x: fx, y: fy }
+                        from: {
+                            x,
+                            y
+                        },
+                        to: {
+                            x: fx,
+                            y: fy
+                        }
                     });
                     continue;
                 }
 
                 // Any other cell → delete it first
                 if (front) {
-                    toDelete.push({ x: fx, y: fy });
+                    toDelete.push({
+                        x: fx,
+                        y: fy
+                    });
                 }
 
                 // Then move forward
                 moves.push({
-                    from: { x, y },
-                    to: { x: fx, y: fy }
+                    from: {
+                        x,
+                        y
+                    },
+                    to: {
+                        x: fx,
+                        y: fy
+                    }
                 });
             }
         }
@@ -555,11 +674,20 @@ function rotateCell(cell, clockwise = true) {
 
     if (!cell.dir) return;
 
-    const { x, y } = cell.dir;
+    const {
+        x,
+        y
+    } = cell.dir;
 
-    cell.dir = clockwise
-        ? { x: -y, y: x }
-        : { x: y, y: -x };
+    cell.dir = clockwise ?
+        {
+            x: -y,
+            y: x
+        } :
+        {
+            x: y,
+            y: -x
+        };
 }
 
 /* ================================
@@ -579,7 +707,11 @@ class Renderer {
     }
 
     render() {
-        const { engine, ctx, size } = this;
+        const {
+            engine,
+            ctx,
+            size
+        } = this;
 
         ctx.clearRect(0, 0, engine.width * size, engine.height * size);
 
@@ -618,6 +750,9 @@ class Renderer {
                     ctx.fillRect(x * size, y * size, size, size);
                 }
 
+                if (cell.dir) {
+                    drawArrow(x, y, cell.dir);
+                }
                 // Slider mark overlay
                 if (cell.type === "slider")
                     drawSliderMark(x, y, cell.axis);
@@ -641,10 +776,10 @@ class Renderer {
     // Helper: compute rotation in radians from direction
     getRotationAngle(dir) {
         if (!dir) return 0;
-        if (dir.x === 1 && dir.y === 0) return 0;          // right
-        if (dir.x === -1 && dir.y === 0) return Math.PI;   // left
-        if (dir.x === 0 && dir.y === 1) return Math.PI/2;  // down
-        if (dir.x === 0 && dir.y === -1) return -Math.PI/2; // up
+        if (dir.x === 1 && dir.y === 0) return 0; // right
+        if (dir.x === -1 && dir.y === 0) return Math.PI; // left
+        if (dir.x === 0 && dir.y === 1) return Math.PI / 2; // down
+        if (dir.x === 0 && dir.y === -1) return -Math.PI / 2; // up
         return 0;
     }
 }
@@ -663,14 +798,59 @@ function drawArrow(x, y, dir) {
     const cy = y * SIZE + SIZE / 2;
     const s = SIZE / 3;
 
-    if (dir.x === 1) { ctx.moveTo(cx + s, cy); ctx.lineTo(cx - s, cy - s); ctx.lineTo(cx - s, cy + s); }
-    if (dir.x === -1) { ctx.moveTo(cx - s, cy); ctx.lineTo(cx + s, cy - s); ctx.lineTo(cx + s, cy + s); }
-    if (dir.y === 1) { ctx.moveTo(cx, cy + s); ctx.lineTo(cx - s, cy - s); ctx.lineTo(cx + s, cy - s); }
-    if (dir.y === -1) { ctx.moveTo(cx, cy - s); ctx.lineTo(cx - s, cy + s); ctx.lineTo(cx + s, cy + s); }
+    if (dir.x === 1) {
+        ctx.moveTo(cx + s, cy);
+        ctx.lineTo(cx - s, cy - s);
+        ctx.lineTo(cx - s, cy + s);
+    }
+    if (dir.x === -1) {
+        ctx.moveTo(cx - s, cy);
+        ctx.lineTo(cx + s, cy - s);
+        ctx.lineTo(cx + s, cy + s);
+    }
+    if (dir.y === 1) {
+        ctx.moveTo(cx, cy + s);
+        ctx.lineTo(cx - s, cy - s);
+        ctx.lineTo(cx + s, cy - s);
+    }
+    if (dir.y === -1) {
+        ctx.moveTo(cx, cy - s);
+        ctx.lineTo(cx - s, cy + s);
+        ctx.lineTo(cx + s, cy + s);
+    }
 
     ctx.closePath();
     ctx.fill();
 }
+
+function drawPaletteArrow(ctx, cx, cy, s, dir) {
+    ctx.beginPath();
+
+    if (dir.x === 1) {
+        ctx.moveTo(cx + s, cy);
+        ctx.lineTo(cx - s, cy - s);
+        ctx.lineTo(cx - s, cy + s);
+    }
+    if (dir.x === -1) {
+        ctx.moveTo(cx - s, cy);
+        ctx.lineTo(cx + s, cy - s);
+        ctx.lineTo(cx + s, cy + s);
+    }
+    if (dir.y === 1) {
+        ctx.moveTo(cx, cy + s);
+        ctx.lineTo(cx - s, cy - s);
+        ctx.lineTo(cx + s, cy - s);
+    }
+    if (dir.y === -1) {
+        ctx.moveTo(cx, cy - s);
+        ctx.lineTo(cx - s, cy + s);
+        ctx.lineTo(cx + s, cy + s);
+    }
+
+    ctx.closePath();
+    ctx.fill();
+}
+
 
 function drawSliderMark(x, y, axis) {
     ctx.strokeStyle = "#fff";
@@ -699,7 +879,7 @@ canvas.addEventListener("mousedown", e => {
 
     isMouseDown = true;
 
-    if (e.button === 0) {  // left click
+    if (e.button === 0) { // left click
         pushUndoState(); // snapshot BEFORE drag
     }
 
@@ -721,9 +901,12 @@ function updateHover(e) {
     const y = Math.floor((e.clientY - rect.top) / SIZE);
 
     hoveredCell =
-        (x >= 0 && y >= 0 && x < engine.width && y < engine.height)
-            ? { x, y }
-            : null;
+        (x >= 0 && y >= 0 && x < engine.width && y < engine.height) ?
+        {
+            x,
+            y
+        } :
+        null;
 }
 
 function handlePaint(e) {
@@ -746,34 +929,78 @@ canvas.addEventListener("contextmenu", e => e.preventDefault());
 function placeCell(x, y) {
 
     if (selectedType === "pusher")
-        engine.grid[y][x] = { type: "pusher", dir: { x: 1, y: 0 } };
+        engine.grid[y][x] = {
+            type: "pusher",
+            dir: {
+                x: 1,
+                y: 0
+            }
+        };
 
     if (selectedType === "block")
-        engine.grid[y][x] = { type: "block" };
+        engine.grid[y][x] = {
+            type: "block"
+        };
 
     if (selectedType === "wall")
-        engine.grid[y][x] = { type: "wall" };
+        engine.grid[y][x] = {
+            type: "wall"
+        };
 
     if (selectedType === "generator")
-        engine.grid[y][x] = { type: "generator", dir: { x: 1, y: 0 } };
+        engine.grid[y][x] = {
+            type: "generator",
+            dir: {
+                x: 1,
+                y: 0
+            }
+        };
 
     if (selectedType === "rotater-cw")
-        engine.grid[y][x] = { type: "rotater-cw" };
+        engine.grid[y][x] = {
+            type: "rotater-cw"
+        };
 
     if (selectedType === "rotater-ccw")
-        engine.grid[y][x] = { type: "rotater-ccw" };
+        engine.grid[y][x] = {
+            type: "rotater-ccw"
+        };
 
     if (selectedType === "slider")
-        engine.grid[y][x] = { type: "slider", axis: "h" };
+        engine.grid[y][x] = {
+            type: "slider",
+            axis: "h"
+        };
     if (selectedType === "trash")
-        engine.grid[y][x] = { type: "trash" };
+        engine.grid[y][x] = {
+            type: "trash"
+        };
     if (selectedType === "puller")
-    engine.grid[y][x] = { type: "puller", dir: { x: 1, y: 0 } };
+        engine.grid[y][x] = {
+            type: "puller",
+            dir: {
+                x: 1,
+                y: 0
+            }
+        };
     if (selectedType === "trash-pusher")
-    engine.grid[y][x] = { type: "trash-pusher", dir: { x: 1, y: 0 } };
+        engine.grid[y][x] = {
+            type: "trash-pusher",
+            dir: {
+                x: 1,
+                y: 0
+            }
+        };
     if (selectedType === "enemy")
-    engine.grid[y][x] = { type: "enemy" };
+        engine.grid[y][x] = {
+            type: "enemy"
+        };
+    if (selectedType === "half-slider")
+        engine.grid[y][x] = {
+            type: "half-slider"
+        };
 }
+
 function snapshot() {
     return JSON.stringify(engine.grid);
 }
@@ -793,7 +1020,7 @@ function restore(snapshotData) {
 }
 
 function pushUndoState(force = false) {
-    if (isRunning && !force) return;  // ❌ don't record during simulation
+    if (isRunning && !force) return; // ❌ don't record during simulation
 
     const current = snapshot();
 
@@ -810,10 +1037,10 @@ function undo() {
     if (undoStack.length === 0) return; // nothing to undo
 
     const current = snapshot();
-    redoStack.push(current);          // save current state
+    redoStack.push(current); // save current state
 
     const previous = undoStack.pop(); // get last state
-    if (previous) restore(previous);  // restore it
+    if (previous) restore(previous); // restore it
 }
 
 function redo() {
@@ -891,7 +1118,9 @@ function loadFromJSON(json) {
 
 function saveToFile() {
     const data = serializeGrid();
-    const blob = new Blob([data], { type: "application/json" });
+    const blob = new Blob([data], {
+        type: "application/json"
+    });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
@@ -910,15 +1139,18 @@ function clearGrid() {
 }
 
 function step() {
-    stop();              // ensure it's not running
-    engine.tick();       // run one tick
-    renderer.render();   // redraw
+    stop(); // ensure it's not running
+    engine.tick(); // run one tick
+    renderer.render(); // redraw
 }
 
 document.addEventListener("keydown", e => {
     if (!hoveredCell) return;
 
-    const { x, y } = hoveredCell;
+    const {
+        x,
+        y
+    } = hoveredCell;
     const cell = engine.grid[y][x];
     if (!cell) return;
 
@@ -946,7 +1178,7 @@ document.addEventListener("keydown", e => {
 });
 
 document.getElementById("loadFile")
-  .addEventListener("change", function () {
+    .addEventListener("change", function() {
         const file = this.files[0];
         if (!file) return;
 
@@ -967,7 +1199,7 @@ function buildPalette() {
     for (const type of Object.keys(CellTypes)) {
         const btn = document.createElement("button");
         btn.className = "palette-btn";
-        btn.title = type;
+        btn.title = type; // hover name
 
         btn.onclick = () => {
             selectedType = type;
@@ -976,24 +1208,45 @@ function buildPalette() {
             btn.classList.add("selected");
         };
 
-        // Create image element
-        const img = new Image();
-        img.src = `images/${type}.png`;
-        img.draggable = false;
-        img.className = "palette-img";
+        const img = CellImages[type];
 
-        // Fallback to color swatch if image fails
-        img.onerror = () => {
+        if (img && img.complete && img.naturalWidth > 0) {
+            const preview = document.createElement("img");
+            preview.src = img.src;
+            preview.draggable = false;
+            btn.appendChild(preview);
+        } else {
+            // fallback flat color preview with arrow if direction exists by default
             const swatch = document.createElement("div");
-            swatch.className = "swatch";
             swatch.style.background = CellTypes[type].color || "#fff";
+            swatch.className = "swatch";
             btn.appendChild(swatch);
-        };
 
-        // If image loads successfully, add it
-        img.onload = () => {
-            btn.appendChild(img);
-        };
+            // Draw arrow overlay on swatch if this type uses direction
+            const dirTypes = new Set([
+                "pusher", "generator", "rotater-cw", "rotater-ccw", "puller", "trash-pusher", "half-slider"
+            ]);
+
+            if (dirTypes.has(type)) {
+                // draw arrow on swatch using a canvas overlay
+
+                const canvasPreview = document.createElement("canvas");
+canvasPreview.width = 40;
+canvasPreview.height = 40;
+canvasPreview.style.position = "absolute";
+canvasPreview.style.top = "2px";
+canvasPreview.style.left = "2px";
+btn.style.position = "relative";
+btn.appendChild(canvasPreview);
+const ctxPreview = canvasPreview.getContext("2d");
+
+ctxPreview.clearRect(0, 0, 40, 40);   // Clear transparent background
+ctxPreview.fillStyle = "#111";         // Arrow color
+drawPaletteArrow(ctxPreview, 20, 20, 10, {x: 1, y: 0}); // Draw arrow
+
+
+            }
+        }
 
         palette.appendChild(btn);
     }
@@ -1035,8 +1288,12 @@ function resizeGrid(newWidth, newHeight) {
     engine.height = newHeight;
 
     // Create new grid
-    const newGrid = Array.from({ length: newHeight }, (_, y) =>
-        Array.from({ length: newWidth }, (_, x) =>
+    const newGrid = Array.from({
+            length: newHeight
+        }, (_, y) =>
+        Array.from({
+                length: newWidth
+            }, (_, x) =>
             oldGrid[y] && oldGrid[y][x] ? structuredClone(oldGrid[y][x]) : null
         )
     );
