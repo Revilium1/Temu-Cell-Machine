@@ -111,12 +111,15 @@ const CellTypes = {
         color: "#ffaa00",
         "one-directional": {
     color: "#ffaa00",
+"one-directional": {
+    color: "#ffaa00",
     canEnter(dx, dy, cell) {
         if (!cell.dir) return false;
 
-        // Allow entry only from the opposite of its facing direction
-        return dx === -cell.dir.x && dy === -cell.dir.y;
+        // Allow push ONLY if entering from opposite of facing direction
+        return dx === cell.dir.x && dy === cell.dir.y;
     }
+},
 },
     },
 };
