@@ -112,8 +112,8 @@ const CellTypes = {
     canEnter(dx, dy, cell) {
         if (!cell.dir) return false;
 
-        // Allow push ONLY if entering from opposite of facing direction
-        return dx === cell.dir.x && dy === cell.dir.y;
+        // Reverse it
+        return dx === -cell.dir.x && dy === -cell.dir.y;
     }
 },
 };
