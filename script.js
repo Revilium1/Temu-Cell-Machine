@@ -107,10 +107,6 @@ const CellTypes = {
             return true; // allow movement into it
         }
     },
-    "one-directional": {
-        color: "#ffaa00",
-        "one-directional": {
-    color: "#ffaa00",
 "one-directional": {
     color: "#ffaa00",
     canEnter(dx, dy, cell) {
@@ -120,8 +116,6 @@ const CellTypes = {
         return dx === cell.dir.x && dy === cell.dir.y;
     }
 },
-},
-    },
 };
 
 /* ================================
