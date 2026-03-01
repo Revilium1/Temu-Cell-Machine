@@ -149,8 +149,8 @@ const MovementSystem = {
 
         const def = CellTypes[cell.type];
 
-        if (def?.canEnter && !def.canEnter(dir.x, dir.y, cell))
-            return null;
+        if (def?.canEnter && !def.canEnter(-dir.x, -dir.y, cell))
+    return null;
 
         const nx = x + dir.x;
         const ny = y + dir.y;
