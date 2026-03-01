@@ -807,12 +807,13 @@ function pushUndoState(force = false) {
 }
 
 function undo() {
-    if (undoStack.length <= 1) return; // need at least 2 states
+    if (undoStack.length === 0) return; // nothing to undo
 
-    redoStack.push(undoStack.pop());
+    const current = snapshot();
+    redoStack.push(current);          // save current state
 
-    const previous = undoStack[undoStack.length - 1];
-    restore(previous);
+    const previous = undoStack.pop(); // get last state
+    if (previous) restore(previous);  // restore it
 }
 
 function redo() {
