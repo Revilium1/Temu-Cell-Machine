@@ -30,7 +30,20 @@ export class Renderer {
 
           ctx.save();
           ctx.translate(cx, cy);
-          ctx.rotate(this.getRotationAngle(cell.dir));
+          let angle = 0;
+
+if (cell.dir) {
+  angle = this.getRotationAngle(cell.dir);
+}
+else if (cell.type === "slide") {
+  // Horizontal = default orientation
+  // Vertical = rotate 90°
+  if (cell.axis === "v") {
+    angle = Math.PI / 2;
+  }
+}
+
+ctx.rotate(angle);
           ctx.drawImage(img, -size / 2, -size / 2, size, size);
           ctx.restore();
           continue;
